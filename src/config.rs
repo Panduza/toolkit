@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use std::path::Path;
+use tracing::{error, info};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for an IP endpoint
@@ -70,5 +72,26 @@ impl Default for BrokerConfig {
                 port: Some(8083),
             }),
         }
+    }
+}
+
+// =============================================================
+
+pub fn write_config<T>(config_path: &Path, config_obj: &T)
+where
+    T: ?Sized + Serialize,
+{
+    // Serialize to JSON format with pretty printing
+    let config_content = serde_json::to_string_pretty(&config_obj)
+        .expect("Failed to serialize default configuration");
+
+    // Write the configuration file
+    if let Err(err) = std::fs::write(config_path, config_content) {
+        error!("Failed to write default configuration file: {}", err);
+    } else {
+        info!(
+            "Generated default configuration file at: {}",
+            config_path.display()
+        );
     }
 }
