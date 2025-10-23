@@ -9,15 +9,18 @@ pub struct RumqttCustomAsyncClient {
     pub qos: rumqttc::QoS,
     /// Retain flag for MQTT messages
     pub retain: bool,
+
+    pub prefix: String,
 }
 
 impl RumqttCustomAsyncClient {
     /// Create a new RumqttCustomAsyncClient with specified QoS and retain settings
-    pub fn new(client: AsyncClient, qos: rumqttc::QoS, retain: bool) -> Self {
+    pub fn new(client: AsyncClient, qos: rumqttc::QoS, retain: bool, prefix: String) -> Self {
         Self {
             client,
             qos,
             retain,
+            prefix,
         }
     }
 
@@ -37,5 +40,10 @@ impl RumqttCustomAsyncClient {
         self.client
             .publish(topic.into(), self.qos, self.retain, payload)
             .await
+    }
+
+    /// Generate a topic string with the configured prefix
+    pub fn topic_with_prefix<A: AsRef<str>>(&self, topic: A) -> String {
+        format!("{}/{}", self.prefix, topic.as_ref())
     }
 }
