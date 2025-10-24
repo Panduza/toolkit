@@ -1,5 +1,5 @@
-use crate::config::BrokerConfig;
 use crate::config::IPEndpointConfig;
+use crate::config::MqttBrokerConfig;
 use config::Map;
 use config::Value;
 use rumqttd::Broker;
@@ -85,7 +85,9 @@ pub fn start(ip_endpoint: &IPEndpointConfig) -> std::thread::JoinHandle<()> {
 ///     max_inflight_count = 500
 ///     max_inflight_size = 1024
 ///
-pub fn websocket_section(broker_config: &BrokerConfig) -> std::collections::HashMap<String, Value> {
+pub fn websocket_section(
+    broker_config: &MqttBrokerConfig,
+) -> std::collections::HashMap<String, Value> {
     // extract host and port
     let host: &str = broker_config
         .websocket
@@ -124,7 +126,7 @@ pub fn websocket_section(broker_config: &BrokerConfig) -> std::collections::Hash
 
 /// TCPv4 configuration section
 ///
-pub fn tcpv4_section(broker_config: &BrokerConfig) -> std::collections::HashMap<String, Value> {
+pub fn tcpv4_section(broker_config: &MqttBrokerConfig) -> std::collections::HashMap<String, Value> {
     // extract host and port
     let host: &str = broker_config.tcp.as_ref().unwrap().addr.as_ref().unwrap();
     let port = broker_config.tcp.as_ref().unwrap().port.unwrap();
@@ -155,7 +157,7 @@ pub fn tcpv4_section(broker_config: &BrokerConfig) -> std::collections::HashMap<
 
 /// Start the broker
 /// This function will start the MQTT broker with the given configuration.
-pub fn start_broker(broker_config: &BrokerConfig) -> std::thread::JoinHandle<()> {
+pub fn start_broker(broker_config: &MqttBrokerConfig) -> std::thread::JoinHandle<()> {
     //
     // info
     info!("----- SERVICE : START BROKER -----");

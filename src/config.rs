@@ -50,7 +50,7 @@ pub struct SerialPortEndpointConfig {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a broker
-pub struct BrokerConfig {
+pub struct MqttBrokerConfig {
     ///
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tcp: Option<IPEndpointConfig>,
@@ -60,7 +60,7 @@ pub struct BrokerConfig {
     pub websocket: Option<IPEndpointConfig>,
 }
 
-impl Default for BrokerConfig {
+impl Default for MqttBrokerConfig {
     fn default() -> Self {
         Self {
             tcp: Some(IPEndpointConfig {
