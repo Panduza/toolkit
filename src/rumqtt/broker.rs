@@ -7,6 +7,7 @@ use rumqttd::Config;
 use tracing::info;
 
 /// Start the MQTT broker in a separate thread
+#[deprecated(since = "0.1.0", note = "Use start_broker instead")]
 pub fn start(ip_endpoint: &IPEndpointConfig) -> std::thread::JoinHandle<()> {
     //
     // info
@@ -68,6 +69,8 @@ pub fn start(ip_endpoint: &IPEndpointConfig) -> std::thread::JoinHandle<()> {
     return _jh;
 }
 
+//------------------------------------------------------------------------------
+
 /// WebSocket configuration section
 ///
 /// [ws.1]
@@ -81,6 +84,7 @@ pub fn start(ip_endpoint: &IPEndpointConfig) -> std::thread::JoinHandle<()> {
 ///     max_payload_size = 20480
 ///     max_inflight_count = 500
 ///     max_inflight_size = 1024
+///
 pub fn websocket_section(broker_config: &BrokerConfig) -> std::collections::HashMap<String, Value> {
     // extract host and port
     let host: &str = broker_config
@@ -116,6 +120,8 @@ pub fn websocket_section(broker_config: &BrokerConfig) -> std::collections::Hash
     ws
 }
 
+//------------------------------------------------------------------------------
+
 /// TCPv4 configuration section
 ///
 pub fn tcpv4_section(broker_config: &BrokerConfig) -> std::collections::HashMap<String, Value> {
@@ -145,7 +151,10 @@ pub fn tcpv4_section(broker_config: &BrokerConfig) -> std::collections::HashMap<
     tcp
 }
 
+//------------------------------------------------------------------------------
+
 /// Start the broker
+/// This function will start the MQTT broker with the given configuration.
 pub fn start_broker(broker_config: &BrokerConfig) -> std::thread::JoinHandle<()> {
     //
     // info
@@ -162,17 +171,27 @@ pub fn start_broker(broker_config: &BrokerConfig) -> std::thread::JoinHandle<()>
     router.insert("max_segment_count".to_string(), Value::new(None, 10));
 
     // see docs of config crate to know more
-    let config = config::Config::builder()
+    let mut config_builder = config::Config::builder()
         .set_default("id", 0)
         .unwrap()
         .set_default("router", router)
-        .unwrap()
-        .set_default("v4.1", tcpv4_section(broker_config))
-        .unwrap()
-        .set_default("ws.1", websocket_section(broker_config))
-        .unwrap()
-        .build()
         .unwrap();
+
+    // Only add TCP section if tcp config is present
+    if broker_config.tcp.is_some() {
+        config_builder = config_builder
+            .set_default("v4.1", tcpv4_section(broker_config))
+            .unwrap();
+    }
+
+    // Only add WebSocket section if websocket config is present
+    if broker_config.websocket.is_some() {
+        config_builder = config_builder
+            .set_default("ws.1", websocket_section(broker_config))
+            .unwrap();
+    }
+
+    let config = config_builder.build().unwrap();
 
     //
     // this is where we deserialize it into Config
