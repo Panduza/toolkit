@@ -32,4 +32,5 @@ rumqttd = { git = "https://github.com/Panduza/rumqtt", tag = "0.1.0" }
 config = "0.15.17"
 # ---
 bytes = "1.10.1"
+regex = "1.12.2"
 # ---

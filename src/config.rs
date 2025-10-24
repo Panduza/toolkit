@@ -1,56 +1,6 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tracing::{error, info};
-
-//------------------------------------------------------------------------------
-
-/// Serialize u16 as hex string
-fn serialize_u16_as_hex<S>(value: &Option<u16>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_str(&format!("0x{:04X}", v)),
-        None => serializer.serialize_none(),
-    }
-}
-
-/// Deserialize hex string or number to u16
-fn deserialize_u16_from_hex<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-
-    let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
-
-    match value {
-        serde_json::Value::Null => Ok(None),
-        serde_json::Value::Number(n) => {
-            if let Some(num) = n.as_u64() {
-                if num <= u16::MAX as u64 {
-                    Ok(Some(num as u16))
-                } else {
-                    Err(D::Error::custom("Number too large for u16"))
-                }
-            } else {
-                Err(D::Error::custom("Invalid number"))
-            }
-        }
-        serde_json::Value::String(s) => {
-            if s.starts_with("0x") || s.starts_with("0X") {
-                u16::from_str_radix(&s[2..], 16)
-                    .map(Some)
-                    .map_err(|_| D::Error::custom("Invalid hex string"))
-            } else {
-                s.parse::<u16>()
-                    .map(Some)
-                    .map_err(|_| D::Error::custom("Invalid number string"))
-            }
-        }
-        _ => Err(D::Error::custom("Expected number or hex string")),
-    }
-}
 
 //------------------------------------------------------------------------------
 
@@ -70,19 +20,11 @@ pub struct IPEndpointConfig {
 /// Configuration for a USB endpoint
 pub struct UsbEndpointConfig {
     /// USB Vendor ID
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_u16_as_hex",
-        deserialize_with = "deserialize_u16_from_hex"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub vid: Option<u16>,
 
     /// USB Product ID
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_u16_as_hex",
-        deserialize_with = "deserialize_u16_from_hex"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pid: Option<u16>,
 
     /// USB Serial number
@@ -155,21 +97,60 @@ impl Default for MqttBrokerConfig {
 
 //------------------------------------------------------------------------------
 
+/// Write configuration in JSON5 format with hex numbers for USB IDs
 pub fn write_config<T>(config_path: &Path, config_obj: &T)
 where
-    T: ?Sized + Serialize,
+    T: Serialize,
 {
-    // Serialize to JSON format with pretty printing
-    let config_content = serde_json::to_string_pretty(&config_obj)
-        .expect("Failed to serialize default configuration");
+    // Serialize to JSON5 format
+    let config_content = serde_json::to_string_pretty(config_obj)
+        .expect("Failed to serialize configuration to JSON5");
+
+    // Post-process to make USB IDs appear as hex
+    let config_content = format_usb_ids_as_hex(&config_content);
 
     // Write the configuration file
     if let Err(err) = std::fs::write(config_path, config_content) {
-        error!("Failed to write default configuration file: {}", err);
+        error!("Failed to write JSON5 configuration file: {}", err);
     } else {
         info!(
-            "Generated default configuration file at: {}",
+            "Generated JSON5 configuration file at: {}",
             config_path.display()
         );
     }
+}
+
+//------------------------------------------------------------------------------
+
+/// Format USB vendor and product IDs as hexadecimal in JSON5 string
+fn format_usb_ids_as_hex(json5_content: &str) -> String {
+    use regex::Regex;
+
+    // Replace vid and pid numeric values with hex format
+    let re_vid = Regex::new(r#""vid":\s*(\d+)"#).unwrap();
+    let re_pid = Regex::new(r#""pid":\s*(\d+)"#).unwrap();
+
+    let content = re_vid.replace_all(json5_content, |caps: &regex::Captures| {
+        let num: u16 = caps[1].parse().unwrap_or(0);
+        format!(r#""vid": 0x{:04X}"#, num)
+    });
+
+    let content = re_pid.replace_all(&content, |caps: &regex::Captures| {
+        let num: u16 = caps[1].parse().unwrap_or(0);
+        format!(r#""pid": 0x{:04X}"#, num)
+    });
+
+    content.to_string()
+}
+
+//------------------------------------------------------------------------------
+
+/// Read configuration from JSON5 format
+pub fn read_config_json5<T>(config_path: &Path) -> Result<T, Box<dyn std::error::Error>>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let content = std::fs::read_to_string(config_path)?;
+    let config: T = serde_json5::from_str(&content)?;
+    Ok(config)
 }
