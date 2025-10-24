@@ -1,6 +1,58 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::path::Path;
 use tracing::{error, info};
+
+//------------------------------------------------------------------------------
+
+/// Serialize u16 as hex string
+fn serialize_u16_as_hex<S>(value: &Option<u16>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        Some(v) => serializer.serialize_str(&format!("0x{:04X}", v)),
+        None => serializer.serialize_none(),
+    }
+}
+
+/// Deserialize hex string or number to u16
+fn deserialize_u16_from_hex<'de, D>(deserializer: D) -> Result<Option<u16>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let value: serde_json::Value = Deserialize::deserialize(deserializer)?;
+
+    match value {
+        serde_json::Value::Null => Ok(None),
+        serde_json::Value::Number(n) => {
+            if let Some(num) = n.as_u64() {
+                if num <= u16::MAX as u64 {
+                    Ok(Some(num as u16))
+                } else {
+                    Err(D::Error::custom("Number too large for u16"))
+                }
+            } else {
+                Err(D::Error::custom("Invalid number"))
+            }
+        }
+        serde_json::Value::String(s) => {
+            if s.starts_with("0x") || s.starts_with("0X") {
+                u16::from_str_radix(&s[2..], 16)
+                    .map(Some)
+                    .map_err(|_| D::Error::custom("Invalid hex string"))
+            } else {
+                s.parse::<u16>()
+                    .map(Some)
+                    .map_err(|_| D::Error::custom("Invalid number string"))
+            }
+        }
+        _ => Err(D::Error::custom("Expected number or hex string")),
+    }
+}
+
+//------------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for an IP endpoint
@@ -15,17 +67,25 @@ pub struct IPEndpointConfig {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-/// Configuration for a serial port endpoint
+/// Configuration for a USB endpoint
 pub struct UsbEndpointConfig {
-    ///
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// USB Vendor ID
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_u16_as_hex",
+        deserialize_with = "deserialize_u16_from_hex"
+    )]
     pub vid: Option<u16>,
 
-    ///
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// USB Product ID
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_u16_as_hex",
+        deserialize_with = "deserialize_u16_from_hex"
+    )]
     pub pid: Option<u16>,
 
-    ///
+    /// USB Serial number
     #[serde(skip_serializing_if = "Option::is_none")]
     pub serial: Option<String>,
 }
@@ -51,20 +111,22 @@ pub struct SerialPortEndpointConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a broker
 pub struct MqttBrokerConfig {
-    ///
+    /// TCP endpoint configuration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tcp: Option<IPEndpointConfig>,
 
-    ///
+    /// WebSocket endpoint configuration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub websocket: Option<IPEndpointConfig>,
 }
 
-impl Default for MqttBrokerConfig {
-    fn default() -> Self {
+//------------------------------------------------------------------------------
+
+impl MqttBrokerConfig {
+    pub fn new_for_meduse() -> Self {
         Self {
             tcp: Some(IPEndpointConfig {
-                addr: Some("0.0.0.0".into()),
+                addr: Some("12.0.0.1".into()),
                 port: Some(1883),
             }),
             websocket: Some(IPEndpointConfig {
@@ -75,7 +137,23 @@ impl Default for MqttBrokerConfig {
     }
 }
 
+//------------------------------------------------------------------------------
+
+impl Default for MqttBrokerConfig {
+    fn default() -> Self {
+        Self {
+            tcp: Some(IPEndpointConfig {
+                addr: Some("127.0.0.1".into()),
+                port: Some(1883),
+            }),
+            websocket: None,
+        }
+    }
+}
+
 // =============================================================
+
+//------------------------------------------------------------------------------
 
 pub fn write_config<T>(config_path: &Path, config_obj: &T)
 where
