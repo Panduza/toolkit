@@ -3,7 +3,7 @@ use rumqttc::{AsyncClient, MqttOptions};
 use std::time::Duration;
 
 /// MQTT initialization utilities
-pub fn rumqtt_init_client<A: Into<String>>(module_name: A) -> (AsyncClient, rumqttc::EventLoop) {
+pub fn init_client<A: Into<String>>(module_name: A) -> (AsyncClient, rumqttc::EventLoop) {
     // Generate a unique client ID
     let client_id = format!("{}-{}", module_name.into(), generate_random_string(5));
 

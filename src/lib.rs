@@ -16,8 +16,4 @@ pub mod rand;
 /// MQTT client wrapper utilities
 pub mod rumqtt_client;
 
-/// MQTT initialization utilities
-pub mod rumqtt_init;
-pub use rumqtt_init::rumqtt_init_client;
-
 pub mod rumqtt;
