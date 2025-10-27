@@ -13,9 +13,6 @@ pub mod logger;
 /// Random utilities and helpers
 pub mod rand;
 
-/// Generic async callback manager for handling asynchronous callbacks
-pub mod async_callback_manager;
-
 /// MQTT client wrapper utilities
 pub mod rumqtt_client;
 
@@ -23,6 +20,4 @@ pub mod rumqtt_client;
 pub mod rumqtt_init;
 pub use rumqtt_init::rumqtt_init_client;
 
-
 pub mod rumqtt;
-
