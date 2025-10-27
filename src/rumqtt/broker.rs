@@ -161,7 +161,7 @@ pub fn tcpv4_section(broker_config: &MqttBrokerConfig) -> std::collections::Hash
 
 /// Start the broker
 /// This function will start the MQTT broker with the given configuration.
-pub fn start_broker_in_thread(broker_config: &MqttBrokerConfig) -> anyhow::Result<JoinHandle<()>> {
+pub fn start_broker_in_thread(broker_config: MqttBrokerConfig) -> anyhow::Result<JoinHandle<()>> {
     //
     // info
     info!("----- SERVICE : START BROKER -----");
@@ -183,12 +183,12 @@ pub fn start_broker_in_thread(broker_config: &MqttBrokerConfig) -> anyhow::Resul
 
     // Only add TCP section if tcp config is present
     if broker_config.tcp.is_some() {
-        config_builder = config_builder.set_default("v4.1", tcpv4_section(broker_config))?;
+        config_builder = config_builder.set_default("v4.1", tcpv4_section(&broker_config))?;
     }
 
     // Only add WebSocket section if websocket config is present
     if broker_config.websocket.is_some() {
-        config_builder = config_builder.set_default("ws.1", websocket_section(broker_config))?;
+        config_builder = config_builder.set_default("ws.1", websocket_section(&broker_config))?;
     }
 
     let config = config_builder.build()?;
