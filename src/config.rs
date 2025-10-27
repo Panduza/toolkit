@@ -57,6 +57,10 @@ pub struct SerialPortEndpointConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a broker
 pub struct MqttBrokerConfig {
+    /// True to use the built-in broker, false to use an external one
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_builtin: Option<bool>,
+
     /// TCP endpoint configuration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tcp: Option<IPEndpointConfig>,
@@ -72,6 +76,7 @@ impl MqttBrokerConfig {
     /// Create a new MqttBrokerConfig for Meduse
     pub fn new_for_meduse() -> Self {
         Self {
+            use_builtin: Some(true),
             tcp: Some(IPEndpointConfig {
                 addr: Some("12.0.0.1".into()),
                 port: Some(1883),
@@ -90,6 +95,7 @@ impl Default for MqttBrokerConfig {
     /// Default implementation for MqttBrokerConfig
     fn default() -> Self {
         Self {
+            use_builtin: Some(true),
             tcp: Some(IPEndpointConfig {
                 addr: Some("127.0.0.1".into()),
                 port: Some(1883),
