@@ -1,5 +1,6 @@
 use crate::rand::generate_random_string;
-use rumqttc::{AsyncClient, MqttOptions};
+use rumqttc::AsyncClient;
+use rumqttc::MqttOptions;
 use std::time::Duration;
 
 /// MQTT initialization utilities
@@ -15,8 +16,6 @@ pub fn init_client<A: Into<String>>(module_name: A) -> (AsyncClient, rumqttc::Ev
     let (client, event_loop) = AsyncClient::new(mqttoptions, 100);
     (client, event_loop)
 }
-
-use rumqttc::AsyncClient;
 
 #[derive(Clone)]
 /// Custom wrapper around rumqttc::AsyncClient with predefined QoS and retain settings

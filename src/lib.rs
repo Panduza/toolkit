@@ -14,6 +14,4 @@ pub mod logger;
 pub mod rand;
 
 /// MQTT client wrapper utilities
-pub mod rumqtt_client;
-
 pub mod rumqtt;
