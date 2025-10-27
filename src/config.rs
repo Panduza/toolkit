@@ -146,11 +146,51 @@ fn format_usb_ids_as_hex(json5_content: &str) -> String {
 //------------------------------------------------------------------------------
 
 /// Read configuration from JSON5 format
-pub fn read_config_json5<T>(config_path: &Path) -> Result<T, Box<dyn std::error::Error>>
+///
+/// If the file does not exist or if the file is empty:
+///     - create a default configuration
+///     - create the file and return.
+///
+/// If the file is malformed, an error is returned.
+///
+/// This function is important for user feedback, so it uses info logs to report its steps.:
+///
+/// If error this function returns a ConfigError with details.
+///
+pub fn read_config<T>(config_path: &Path) -> Result<T, Box<dyn std::error::Error>>
 where
-    T: for<'de> Deserialize<'de>,
+    T: for<'de> Deserialize<'de> + Default + Serialize,
 {
-    let content = std::fs::read_to_string(config_path)?;
-    let config: T = serde_json5::from_str(&content)?;
-    Ok(config)
+    match std::fs::read_to_string(config_path) {
+        Ok(content) => {
+            // Check if the file is empty or contains only whitespace
+            if content.trim().is_empty() {
+                info!(
+                    "Configuration file is empty: {}, creating default configuration",
+                    config_path.display()
+                );
+                let default_config = T::default();
+                write_config(config_path, &default_config);
+                Ok(default_config)
+            } else {
+                info!("Reading configuration from: {}", config_path.display());
+                // File has content, try to parse it
+                let config: T = serde_json5::from_str(&content)?;
+                info!(
+                    "Successfully loaded configuration from: {}",
+                    config_path.display()
+                );
+                Ok(config)
+            }
+        }
+        Err(_) => {
+            error!(
+                "Configuration file does not exist: {}, creating default configuration",
+                config_path.display()
+            );
+            let default_config = T::default();
+            write_config(config_path, &default_config);
+            Ok(default_config)
+        }
+    }
 }
