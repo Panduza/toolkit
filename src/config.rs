@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tracing::{error, info};
+use tracing::info;
 
 //------------------------------------------------------------------------------
 
@@ -98,26 +98,25 @@ impl Default for MqttBrokerConfig {
 //------------------------------------------------------------------------------
 
 /// Write configuration in JSON5 format with hex numbers for USB IDs
-pub fn write_config<T>(config_path: &Path, config_obj: &T)
+pub fn write_config<T>(config_path: &Path, config_obj: &T) -> anyhow::Result<()>
 where
     T: Serialize,
 {
     // Serialize to JSON5 format
-    let config_content = serde_json::to_string_pretty(config_obj)
-        .expect("Failed to serialize configuration to JSON5");
+    let config_content = serde_json::to_string_pretty(config_obj)?;
 
     // Post-process to make USB IDs appear as hex
     let config_content = format_usb_ids_as_hex(&config_content);
 
     // Write the configuration file
-    if let Err(err) = std::fs::write(config_path, config_content) {
-        error!("Failed to write JSON5 configuration file: {}", err);
-    } else {
-        info!(
-            "Generated JSON5 configuration file at: {}",
-            config_path.display()
-        );
-    }
+    std::fs::write(config_path, config_content)?;
+
+    info!(
+        "Generated JSON5 configuration file at: {}",
+        config_path.display()
+    );
+
+    Ok(())
 }
 
 //------------------------------------------------------------------------------
@@ -155,9 +154,7 @@ fn format_usb_ids_as_hex(json5_content: &str) -> String {
 ///
 /// This function is important for user feedback, so it uses info logs to report its steps.:
 ///
-/// If error this function returns a ConfigError with details.
-///
-pub fn read_config<T>(config_path: &Path) -> Result<T, Box<dyn std::error::Error>>
+pub fn read_config<T>(config_path: &Path) -> anyhow::Result<T>
 where
     T: for<'de> Deserialize<'de> + Default + Serialize,
 {
@@ -170,7 +167,7 @@ where
                     config_path.display()
                 );
                 let default_config = T::default();
-                write_config(config_path, &default_config);
+                write_config(config_path, &default_config)?;
                 Ok(default_config)
             } else {
                 info!("Reading configuration from: {}", config_path.display());
@@ -184,12 +181,12 @@ where
             }
         }
         Err(_) => {
-            error!(
+            info!(
                 "Configuration file does not exist: {}, creating default configuration",
                 config_path.display()
             );
             let default_config = T::default();
-            write_config(config_path, &default_config);
+            write_config(config_path, &default_config)?;
             Ok(default_config)
         }
     }
