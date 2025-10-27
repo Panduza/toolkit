@@ -16,6 +16,8 @@ pub struct IPEndpointConfig {
     pub port: Option<u16>,
 }
 
+// ============================================================================
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a USB endpoint
 pub struct UsbEndpointConfig {
@@ -31,6 +33,8 @@ pub struct UsbEndpointConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub serial: Option<String>,
 }
+
+// ============================================================================
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a serial port endpoint
@@ -48,7 +52,7 @@ pub struct SerialPortEndpointConfig {
     pub baud_rate: Option<u32>,
 }
 
-// =============================================================
+// ============================================================================
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a broker
@@ -62,9 +66,10 @@ pub struct MqttBrokerConfig {
     pub websocket: Option<IPEndpointConfig>,
 }
 
-//------------------------------------------------------------------------------
+// ============================================================================
 
 impl MqttBrokerConfig {
+    /// Create a new MqttBrokerConfig for Meduse
     pub fn new_for_meduse() -> Self {
         Self {
             tcp: Some(IPEndpointConfig {
@@ -79,9 +84,10 @@ impl MqttBrokerConfig {
     }
 }
 
-//------------------------------------------------------------------------------
+// ============================================================================
 
 impl Default for MqttBrokerConfig {
+    /// Default implementation for MqttBrokerConfig
     fn default() -> Self {
         Self {
             tcp: Some(IPEndpointConfig {
@@ -93,9 +99,7 @@ impl Default for MqttBrokerConfig {
     }
 }
 
-// =============================================================
-
-//------------------------------------------------------------------------------
+// ============================================================================
 
 /// Write configuration in JSON5 format with hex numbers for USB IDs
 pub fn write_config<T>(config_path: &Path, config_obj: &T) -> anyhow::Result<()>
@@ -119,7 +123,7 @@ where
     Ok(())
 }
 
-//------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 /// Format USB vendor and product IDs as hexadecimal in JSON5 string
 fn format_usb_ids_as_hex(json5_content: &str) -> String {
@@ -142,7 +146,7 @@ fn format_usb_ids_as_hex(json5_content: &str) -> String {
     content.to_string()
 }
 
-//------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 /// Read configuration from JSON5 format
 ///
@@ -152,8 +156,7 @@ fn format_usb_ids_as_hex(json5_content: &str) -> String {
 ///
 /// If the file is malformed, an error is returned.
 ///
-/// This function is important for user feedback, so it uses info logs to report its steps.:
-///
+/// This function is important for user feedback, so it uses info logs to report its steps.
 pub fn read_config<T>(config_path: &Path) -> anyhow::Result<T>
 where
     T: for<'de> Deserialize<'de> + Default + Serialize,
