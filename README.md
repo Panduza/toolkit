@@ -62,8 +62,8 @@ Initialize and use MQTT client:
 ```rust
 use pza_toolkit::rumqtt_init_client;
 
-// Initialize MQTT client
-let client = rumqtt_init_client().await?;
+// Initialize MQTT client with a module name
+let (client, event_loop) = rumqtt_init_client("my_module");
 ```
 
 ### Async Callback Manager
@@ -73,11 +73,14 @@ Manage asynchronous callbacks:
 ```rust
 use pza_toolkit::async_callback_manager::AsyncCallbackManager;
 
-let mut manager = AsyncCallbackManager::new();
-manager.register_callback(|| async {
-    // Your async operation
+let mut manager = AsyncCallbackManager::<String>::new();
+let callback = Box::new(|data: String| {
+    Box::pin(async move {
+        println!("Received: {}", data);
+    }) as std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>
 });
-manager.execute_all().await;
+manager.add(callback);
+manager.execute_all_callbacks(&"Hello".to_string()).await;
 ```
 
 ## 🏗️ Building from Source
