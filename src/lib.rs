@@ -8,7 +8,7 @@ pub mod path;
 pub mod config;
 
 /// Logger initialization utilities
-pub mod logger;
+pub mod dioxus;
 
 /// Random utilities and helpers
 pub mod rand;
