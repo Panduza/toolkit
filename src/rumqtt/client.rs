@@ -3,6 +3,8 @@ use rumqttc::AsyncClient;
 use rumqttc::MqttOptions;
 use std::time::Duration;
 
+// -------------------------------------------------------------------------------
+
 /// MQTT initialization utilities
 pub fn init_client<A: Into<String>>(module_name: A) -> (AsyncClient, rumqttc::EventLoop) {
     // Generate a unique client ID
@@ -17,8 +19,10 @@ pub fn init_client<A: Into<String>>(module_name: A) -> (AsyncClient, rumqttc::Ev
     (client, event_loop)
 }
 
-#[derive(Clone)]
+// ===============================================================================
+
 /// Custom wrapper around rumqttc::AsyncClient with predefined QoS and retain settings
+#[derive(Clone)]
 pub struct RumqttCustomAsyncClient {
     /// The underlying MQTT asynchronous client
     pub client: AsyncClient,
@@ -29,6 +33,8 @@ pub struct RumqttCustomAsyncClient {
 
     pub prefix: String,
 }
+
+// -------------------------------------------------------------------------------
 
 impl RumqttCustomAsyncClient {
     /// Create a new RumqttCustomAsyncClient with specified QoS and retain settings
@@ -41,12 +47,16 @@ impl RumqttCustomAsyncClient {
         }
     }
 
+    // ---------------------------------------------------------------------------
+
     /// Subscribe to all relevant MQTT topics
     pub async fn subscribe_to_all(&self, topics: Vec<String>) {
         for topic in topics {
             self.client.subscribe(topic, self.qos).await.unwrap();
         }
     }
+
+    // ---------------------------------------------------------------------------
 
     /// Publish a message to a topic using the predefined QoS and retain settings
     pub async fn publish<A: Into<String>, V: Into<Vec<u8>>>(
@@ -59,8 +69,12 @@ impl RumqttCustomAsyncClient {
             .await
     }
 
+    // ---------------------------------------------------------------------------
+
     /// Generate a topic string with the configured prefix
     pub fn topic_with_prefix<A: AsRef<str>>(&self, topic: A) -> String {
         format!("{}/{}", self.prefix, topic.as_ref())
     }
 }
+
+// ===============================================================================

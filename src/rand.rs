@@ -1,5 +1,7 @@
 use rand::{distributions::Alphanumeric, Rng};
 
+// -------------------------------------------------------------------------------
+
 /// Generate a random string of the specified length using alphanumeric characters
 pub fn generate_random_string(length: usize) -> String {
     let rng = rand::thread_rng();
@@ -8,3 +10,5 @@ pub fn generate_random_string(length: usize) -> String {
         .map(|c| c as char)
         .collect()
 }
+
+// -------------------------------------------------------------------------------
