@@ -2,6 +2,8 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
+// -------------------------------------------------------------------------------
+
 /// Get the user root directory for Panduza
 ///
 /// Returns the path to the `.panduza` directory inside the user's home directory.
@@ -12,6 +14,8 @@ use std::path::PathBuf;
 pub fn user_root_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|home| home.join(".panduza"))
 }
+
+// -------------------------------------------------------------------------------
 
 /// Ensure that the user root directory exists
 ///
@@ -30,3 +34,5 @@ pub fn ensure_user_root_dir_exists() -> io::Result<()> {
         })
         .and_then(fs::create_dir_all)
 }
+
+// -------------------------------------------------------------------------------
