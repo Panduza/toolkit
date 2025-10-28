@@ -8,21 +8,10 @@ pub mod path;
 pub mod config;
 
 /// Logger initialization utilities
-pub mod logger;
+pub mod dioxus;
 
 /// Random utilities and helpers
 pub mod rand;
 
-/// Generic async callback manager for handling asynchronous callbacks
-pub mod async_callback_manager;
-
 /// MQTT client wrapper utilities
-pub mod rumqtt_client;
-
-/// MQTT initialization utilities
-pub mod rumqtt_init;
-pub use rumqtt_init::rumqtt_init_client;
-
-
 pub mod rumqtt;
-

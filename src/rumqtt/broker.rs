@@ -1,10 +1,14 @@
 use crate::config::IPEndpointConfig;
 use crate::config::MqttBrokerConfig;
+use anyhow::Ok;
 use config::Map;
 use config::Value;
 use rumqttd::Broker;
 use rumqttd::Config;
 use tracing::info;
+use tracing::warn;
+
+use std::thread::JoinHandle;
 
 /// Start the MQTT broker in a separate thread
 #[deprecated(since = "0.1.0", note = "Use start_broker instead")]
@@ -157,7 +161,7 @@ pub fn tcpv4_section(broker_config: &MqttBrokerConfig) -> std::collections::Hash
 
 /// Start the broker
 /// This function will start the MQTT broker with the given configuration.
-pub fn start_broker(broker_config: &MqttBrokerConfig) -> std::thread::JoinHandle<()> {
+pub fn start_broker_in_thread(broker_config: MqttBrokerConfig) -> anyhow::Result<JoinHandle<()>> {
     //
     // info
     info!("----- SERVICE : START BROKER -----");
@@ -174,38 +178,29 @@ pub fn start_broker(broker_config: &MqttBrokerConfig) -> std::thread::JoinHandle
 
     // see docs of config crate to know more
     let mut config_builder = config::Config::builder()
-        .set_default("id", 0)
-        .unwrap()
-        .set_default("router", router)
-        .unwrap();
+        .set_default("id", 0)?
+        .set_default("router", router)?;
 
     // Only add TCP section if tcp config is present
     if broker_config.tcp.is_some() {
-        config_builder = config_builder
-            .set_default("v4.1", tcpv4_section(broker_config))
-            .unwrap();
+        config_builder = config_builder.set_default("v4.1", tcpv4_section(&broker_config))?;
     }
 
     // Only add WebSocket section if websocket config is present
     if broker_config.websocket.is_some() {
-        config_builder = config_builder
-            .set_default("ws.1", websocket_section(broker_config))
-            .unwrap();
+        config_builder = config_builder.set_default("ws.1", websocket_section(&broker_config))?;
     }
 
-    let config = config_builder.build().unwrap();
-
+    let config = config_builder.build()?;
     //
     // this is where we deserialize it into Config
-    let rumqttd_config: Config = config.try_deserialize().unwrap();
+    let rumqttd_config: Config = config.try_deserialize()?;
     let mut broker = Broker::new(rumqttd_config);
 
     //
     // start broker
-    let _jh = std::thread::spawn(move || {
-        broker.start().unwrap();
-        println!("BROKER STOPPPED !!!!!!!!!!!!!!!!!");
-    });
-
-    return _jh;
+    return Ok(std::thread::spawn(move || {
+        let end_result = broker.start();
+        warn!("BROKER STOPPPED {:?} !!!!!!!!!!!!!!!!!", end_result);
+    }));
 }

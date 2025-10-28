@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tracing::{error, info};
+use tracing::info;
 
 //------------------------------------------------------------------------------
 
@@ -15,6 +15,8 @@ pub struct IPEndpointConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub port: Option<u16>,
 }
+
+// ============================================================================
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a USB endpoint
@@ -32,6 +34,8 @@ pub struct UsbEndpointConfig {
     pub serial: Option<String>,
 }
 
+// ============================================================================
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a serial port endpoint
 pub struct SerialPortEndpointConfig {
@@ -48,11 +52,15 @@ pub struct SerialPortEndpointConfig {
     pub baud_rate: Option<u32>,
 }
 
-// =============================================================
+// ============================================================================
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// Configuration for a broker
 pub struct MqttBrokerConfig {
+    /// True to use the built-in broker, false to use an external one
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_builtin: Option<bool>,
+
     /// TCP endpoint configuration
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tcp: Option<IPEndpointConfig>,
@@ -62,11 +70,13 @@ pub struct MqttBrokerConfig {
     pub websocket: Option<IPEndpointConfig>,
 }
 
-//------------------------------------------------------------------------------
+// ============================================================================
 
 impl MqttBrokerConfig {
+    /// Create a new MqttBrokerConfig for Meduse
     pub fn new_for_meduse() -> Self {
         Self {
+            use_builtin: Some(true),
             tcp: Some(IPEndpointConfig {
                 addr: Some("12.0.0.1".into()),
                 port: Some(1883),
@@ -79,11 +89,13 @@ impl MqttBrokerConfig {
     }
 }
 
-//------------------------------------------------------------------------------
+// ============================================================================
 
 impl Default for MqttBrokerConfig {
+    /// Default implementation for MqttBrokerConfig
     fn default() -> Self {
         Self {
+            use_builtin: Some(true),
             tcp: Some(IPEndpointConfig {
                 addr: Some("127.0.0.1".into()),
                 port: Some(1883),
@@ -93,34 +105,31 @@ impl Default for MqttBrokerConfig {
     }
 }
 
-// =============================================================
-
-//------------------------------------------------------------------------------
+// ============================================================================
 
 /// Write configuration in JSON5 format with hex numbers for USB IDs
-pub fn write_config<T>(config_path: &Path, config_obj: &T)
+pub fn write_config<T>(config_path: &Path, config_obj: &T) -> anyhow::Result<()>
 where
     T: Serialize,
 {
     // Serialize to JSON5 format
-    let config_content = serde_json::to_string_pretty(config_obj)
-        .expect("Failed to serialize configuration to JSON5");
+    let config_content = serde_json::to_string_pretty(config_obj)?;
 
     // Post-process to make USB IDs appear as hex
     let config_content = format_usb_ids_as_hex(&config_content);
 
     // Write the configuration file
-    if let Err(err) = std::fs::write(config_path, config_content) {
-        error!("Failed to write JSON5 configuration file: {}", err);
-    } else {
-        info!(
-            "Generated JSON5 configuration file at: {}",
-            config_path.display()
-        );
-    }
+    std::fs::write(config_path, config_content)?;
+
+    info!(
+        "Generated JSON5 configuration file at: {}",
+        config_path.display()
+    );
+
+    Ok(())
 }
 
-//------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 /// Format USB vendor and product IDs as hexadecimal in JSON5 string
 fn format_usb_ids_as_hex(json5_content: &str) -> String {
@@ -143,14 +152,51 @@ fn format_usb_ids_as_hex(json5_content: &str) -> String {
     content.to_string()
 }
 
-//------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 /// Read configuration from JSON5 format
-pub fn read_config_json5<T>(config_path: &Path) -> Result<T, Box<dyn std::error::Error>>
+///
+/// If the file does not exist or if the file is empty:
+///     - create a default configuration
+///     - create the file and return.
+///
+/// If the file is malformed, an error is returned.
+///
+/// This function is important for user feedback, so it uses info logs to report its steps.
+pub fn read_config<T>(config_path: &Path) -> anyhow::Result<T>
 where
-    T: for<'de> Deserialize<'de>,
+    T: for<'de> Deserialize<'de> + Default + Serialize,
 {
-    let content = std::fs::read_to_string(config_path)?;
-    let config: T = serde_json5::from_str(&content)?;
-    Ok(config)
+    match std::fs::read_to_string(config_path) {
+        Ok(content) => {
+            // Check if the file is empty or contains only whitespace
+            if content.trim().is_empty() {
+                info!(
+                    "Configuration file is empty: {}, creating default configuration",
+                    config_path.display()
+                );
+                let default_config = T::default();
+                write_config(config_path, &default_config)?;
+                Ok(default_config)
+            } else {
+                info!("Reading configuration from: {}", config_path.display());
+                // File has content, try to parse it
+                let config: T = serde_json5::from_str(&content)?;
+                info!(
+                    "Successfully loaded configuration from: {}",
+                    config_path.display()
+                );
+                Ok(config)
+            }
+        }
+        Err(_) => {
+            info!(
+                "Configuration file does not exist: {}, creating default configuration",
+                config_path.display()
+            );
+            let default_config = T::default();
+            write_config(config_path, &default_config)?;
+            Ok(default_config)
+        }
+    }
 }
