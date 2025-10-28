@@ -8,11 +8,12 @@ A comprehensive Rust toolkit providing essential utilities for Panduza applicati
 
 ## ✨ Features
 
-- **🗂️ Path Management** - Cross-platform standardized file system locations (Windows, Linux, macOS)
-- **⚙️ Configuration** - Flexible configuration utilities for applications
-- **📝 Logging** - Easy-to-use logger initialization with tracing support
-- **🎲 Random Utilities** - Random number generation and helper functions
-- **📡 MQTT Integration** - Wrapper utilities for MQTT client (rumqttc) and broker (rumqttd)
+- **🗂️ Path Management** - Cross-platform Panduza user directory management (Windows, Linux, macOS)
+- **⚙️ Configuration** - JSON5 configuration utilities with USB ID formatting support
+- **📝 Logging** - Flexible logger initialization with level control and filtering
+- **🎲 Random Utilities** - Random string generation for unique identifiers
+- **📡 MQTT Client** - Wrapper utilities and initialization for MQTT client (rumqttc)
+- **🏢 MQTT Broker** - Easy-to-use broker startup with TCP and WebSocket support (rumqttd)
 - **⚡ Async Callbacks** - Generic async callback manager for handling asynchronous operations
 
 ## 📦 Installation
@@ -34,25 +35,57 @@ cargo add pza-toolkit
 
 ### Path Utilities
 
-Access standardized Panduza paths across different platforms:
+Manage Panduza user directory across different platforms:
 
 ```rust
 use pza_toolkit::path;
 
-// Get platform-specific Panduza directories
-let config_path = path::get_config_dir();
-let data_path = path::get_data_dir();
+// Get the Panduza user root directory (~/.panduza)
+let panduza_dir = path::user_root_dir();
+
+// Ensure the directory exists
+path::ensure_user_root_dir_exists()?;
 ```
 
 ### Logger Initialization
 
-Set up logging for your application:
+Set up logging with custom level and filtering:
 
 ```rust
 use pza_toolkit::logger;
+use tracing::Level;
 
-// Initialize the logger
-logger::init();
+// Initialize the logger with a specific level
+logger::init_logger(Level::INFO)?;
+```
+
+### Configuration
+
+Read and write JSON5 configuration files:
+
+```rust
+use pza_toolkit::config::{read_config_json5, write_config, MqttBrokerConfig};
+use std::path::Path;
+
+// Create a configuration
+let config = MqttBrokerConfig::default();
+
+// Write to file
+write_config(Path::new("config.json5"), &config);
+
+// Read from file
+let loaded_config: MqttBrokerConfig = read_config_json5(Path::new("config.json5"))?;
+```
+
+### Random Utilities
+
+Generate random strings for unique identifiers:
+
+```rust
+use pza_toolkit::rand::generate_random_string;
+
+// Generate a random string of specified length
+let random_id = generate_random_string(8);
 ```
 
 ### MQTT Client
@@ -63,7 +96,23 @@ Initialize and use MQTT client:
 use pza_toolkit::rumqtt_init_client;
 
 // Initialize MQTT client with a module name
+// Returns (AsyncClient, EventLoop)
 let (client, event_loop) = rumqtt_init_client("my_module");
+```
+
+### MQTT Broker
+
+Start an MQTT broker with TCP and/or WebSocket support:
+
+```rust
+use pza_toolkit::config::MqttBrokerConfig;
+use pza_toolkit::rumqtt::broker::start_broker;
+
+// Create broker configuration
+let broker_config = MqttBrokerConfig::default();
+
+// Start the broker in a separate thread
+let broker_handle = start_broker(&broker_config);
 ```
 
 ### Async Callback Manager
