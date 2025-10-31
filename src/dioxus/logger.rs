@@ -51,6 +51,11 @@ impl LoggerBuilder {
         self
     }
 
+    pub fn filter_rmcp(mut self) -> Self {
+        self.filters.push("rmcp=off".into());
+        self
+    }
+
     pub fn build(self) -> Result<(), SetGlobalDefaultError> {
         #[cfg(not(target_arch = "wasm32"))]
         {
